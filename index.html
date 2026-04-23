@@ -3,989 +3,796 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de E-book com Conteúdo Personalizado</title>
-    <!-- jsPDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>EviMed - Assistente de Medicina Baseada em Evidências</title>
     <style>
-        /* ========== ESTILOS GLOBAIS ========== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+
+        :root {
+            --primary: #00d4ff;
+            --primary-dark: #0099cc;
+            --secondary: #7b2ff7;
+            --bg-dark: #0a0e17;
+            --bg-card: #111827;
+            --bg-input: #1a1f2e;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: #1e293b;
+            --glow: 0 0 20px rgba(0, 212, 255, 0.3);
         }
 
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecf2 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            padding: 20px;
+            background-image: 
+                radial-gradient(ellipse at 20% 50%, rgba(0, 212, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(123, 47, 247, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(0, 212, 255, 0.03) 0%, transparent 50%);
         }
 
-        .container {
-            max-width: 1300px;
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            background: rgba(255,255,255,0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 40px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-            padding: 30px;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-image: 
+                linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: gridMove 20s linear infinite;
         }
 
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #1e293b;
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(60px, 60px); }
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
             margin-bottom: 10px;
-            letter-spacing: -0.02em;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: var(--glow);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.6); }
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
         }
 
         .subtitle {
-            color: #475569;
-            margin-bottom: 30px;
-            font-size: 1.1rem;
-            border-left: 5px solid #3b82f6;
-            padding-left: 15px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
 
-        /* ===== ABAS ===== */
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .tab-button {
-            padding: 12px 24px;
-            background: #e2e8f0;
-            border: none;
-            border-radius: 40px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #334155;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .tab-button.active {
-            background: #3b82f6;
-            color: white;
-            box-shadow: 0 10px 20px -5px #3b82f6;
-        }
-        .tab-pane {
-            display: none;
-            background: white;
-            border-radius: 30px;
-            padding: 25px;
-            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
-        }
-        .tab-pane.active {
-            display: block;
-        }
-
-        /* ===== LAYOUT DE DUAS COLUNAS ===== */
-        .editor-grid {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 30px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            font-weight: 500;
-            color: #334155;
-            margin-bottom: 6px;
-            font-size: 0.95rem;
-        }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 20px;
-            font-size: 1rem;
-            transition: 0.2s;
-            background: #f8fafc;
-        }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            outline: none;
-            border-color: #3b82f6;
-            background: white;
-        }
-        textarea {
-            min-height: 200px;
-            resize: vertical;
-        }
-
-        .row {
-            display: flex;
-            gap: 15px;
-        }
-        .row .form-group {
-            flex: 1;
-        }
-
-        /* ===== UPLOAD DE IMAGEM ===== */
-        .upload-area {
-            border: 3px dashed #cbd5e1;
-            border-radius: 30px;
-            padding: 25px;
-            text-align: center;
-            background: #f1f5f9;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .upload-area:hover {
-            border-color: #3b82f6;
-            background: #eef2ff;
-        }
-        .upload-area input {
-            display: none;
-        }
-        .upload-area .upload-icon {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-        .upload-area .upload-text {
-            font-weight: 500;
-            color: #1e293b;
-        }
-        .upload-area .upload-hint {
-            font-size: 0.85rem;
-            color: #64748b;
-            margin-top: 8px;
-        }
-        #coverPreview {
-            max-width: 100%;
-            max-height: 180px;
-            border-radius: 20px;
-            margin-top: 15px;
-            display: none;
-            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.2);
-        }
-
-        /* ===== OPÇÕES DE CONTEÚDO ===== */
-        .content-option {
+        .status-bar {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .content-option label {
-            margin-bottom: 0;
-            cursor: pointer;
-        }
-        .content-option input[type="radio"] {
-            width: auto;
-            margin-right: 5px;
-        }
-        .content-area {
-            border: 2px solid #e2e8f0;
-            border-radius: 20px;
-            padding: 20px;
-            background: #f8fafc;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--success);
         }
 
-        /* ===== BOTÕES DE AÇÃO ===== */
-        .button-group {
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Chat container */
+        .chat-container {
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(123, 47, 247, 0.1));
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
             display: flex;
-            gap: 15px;
-            margin: 30px 0 10px;
+            align-items: center;
+            gap: 10px;
         }
-        .btn {
-            flex: 1;
-            padding: 15px;
-            font-size: 1.1rem;
+
+        .chat-header-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .chat-header-info h3 {
+            font-size: 15px;
             font-weight: 600;
-            border-radius: 60px;
-            cursor: pointer;
-            border: none;
-            transition: 0.2s;
         }
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-            box-shadow: 0 15px 25px -8px #3b82f680;
+
+        .chat-header-info span {
+            font-size: 11px;
+            color: var(--text-secondary);
         }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 20px 30px -8px #2563eb;
+
+        .chat-messages {
+            height: 450px;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
         }
-        .btn-secondary {
-            background: #f1f5f9;
-            color: #1e293b;
-            border: 2px solid #cbd5e1;
+
+        .chat-messages::-webkit-scrollbar {
+            width: 5px;
         }
-        .btn-secondary:hover {
-            background: #e2e8f0;
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
         }
-        .btn:disabled {
-            opacity: 0.6;
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        /* Messages */
+        .message {
+            display: flex;
+            gap: 10px;
+            animation: messageSlide 0.4s ease;
+        }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message.bot .message-avatar {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .message.user .message-avatar {
+            background: var(--primary-dark);
+        }
+
+        .message-content {
+            max-width: 75%;
+            padding: 14px 18px;
+            border-radius: 16px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .message.bot .message-content {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(123, 47, 247, 0.2));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-content .label {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+        }
+
+        .label.evidence {
+            background: rgba(0, 212, 255, 0.2);
+            color: var(--primary);
+        }
+
+        .label.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .label.level {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            margin-left: 6px;
+        }
+
+        .message-content .source {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Input area */
+        .chat-input-area {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .chat-input {
+            width: 100%;
+            padding: 14px 50px 14px 18px;
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+        }
+
+        .chat-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .input-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 18px;
             pointer-events: none;
         }
 
-        /* ===== PAINEL DE PRÉ-VISUALIZAÇÃO ===== */
-        .preview-panel {
-            background: white;
-            border-radius: 30px;
-            padding: 25px;
-            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-        }
-        .preview-title {
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #0f172a;
-        }
-        .cover-preview-box {
-            background: #e2e8f0;
-            border-radius: 30px;
-            padding: 30px 20px;
-            aspect-ratio: 1 / 1.414; /* proporção A4 */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            background-size: cover;
-            background-position: center;
+        .send-btn {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 14px;
             color: white;
-            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            margin-bottom: 20px;
-            box-shadow: 0 20px 30px -10px black;
-            transition: 0.3s;
-            font-family: var(--cover-font, 'Georgia');
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
-        .cover-preview-box .preview-title-text {
-            font-size: 2rem;
-            font-weight: 800;
-            margin-bottom: 10px;
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: var(--glow);
         }
-        .cover-preview-box .preview-subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
+
+        .send-btn:active {
+            transform: scale(0.95);
         }
-        .cover-preview-box .preview-author {
-            margin-top: 20px;
-            font-style: italic;
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
-        .status-area {
-            background: #f1f5f9;
+
+        /* Suggestion chips */
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 0 20px 16px 20px;
+        }
+
+        .chip {
+            padding: 8px 14px;
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid rgba(0, 212, 255, 0.2);
             border-radius: 20px;
-            padding: 15px;
-            color: #1e293b;
-            font-weight: 500;
-            text-align: center;
+            font-size: 12px;
+            color: var(--primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
         }
-        /* ===== RESPONSIVIDADE ===== */
-        @media (max-width: 900px) {
-            .editor-grid {
-                grid-template-columns: 1fr;
-            }
+
+        .chip:hover {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        /* Typing indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 14px 18px;
+            align-items: center;
+        }
+
+        .typing-indicator span {
+            width: 7px;
+            height: 7px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: typingBounce 1.4s ease-in-out infinite;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .chat-messages { height: 350px; }
+            .message-content { max-width: 85%; }
+            .logo-text { font-size: 24px; }
+            .suggestions { gap: 6px; }
+            .chip { font-size: 11px; padding: 6px 10px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📘 Estúdio de E-books com Conteúdo Personalizado</h1>
-        <div class="subtitle">Crie e-books com sua própria história: upload de .txt, digitação ou conteúdo automático.</div>
+    <div class="grid-bg"></div>
 
-        <div class="editor-grid">
-            <!-- COLUNA ESQUERDA: CONFIGURAÇÕES COM ABAS -->
-            <div>
-                <div class="tabs">
-                    <button class="tab-button active" data-tab="capa">📌 Capa</button>
-                    <button class="tab-button" data-tab="layout">📄 Layout</button>
-                    <button class="tab-button" data-tab="conteudo">📖 Conteúdo</button>
+    <div class="main-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo-container">
+                <div class="logo-icon">🧬</div>
+                <span class="logo-text">EviMed</span>
+            </div>
+            <p class="subtitle">Assistente de Medicina Baseada em Evidências</p>
+            <div class="status-bar">
+                <span class="status-dot"></span>
+                <span>Sistema ativo • Base atualizada</span>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="chat-header-icon">💊</div>
+                <div class="chat-header-info">
+                    <h3>Assistente EviMed</h3>
+                    <span>Respostas baseadas em diretrizes clínicas</span>
                 </div>
-
-                <!-- ABA CAPA -->
-                <div class="tab-pane active" id="tab-capa">
-                    <div class="form-group">
-                        <label>Título principal</label>
-                        <input type="text" id="title" placeholder="Ex: A Jornada do Herói" value="Meu E-book Incrível">
-                    </div>
-                    <div class="row">
-                        <div class="form-group">
-                            <label>Subtítulo (opcional)</label>
-                            <input type="text" id="subtitle" placeholder="Subtítulo" value="Edição Especial">
-                        </div>
-                        <div class="form-group">
-                            <label>Autor</label>
-                            <input type="text" id="author" placeholder="Seu nome" value="Autor Desconhecido">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Imagem de capa (foto)</label>
-                        <div class="upload-area" id="uploadArea">
-                            <span class="upload-icon">📸</span>
-                            <span class="upload-text">Clique para fazer upload</span>
-                            <span class="upload-hint">Arraste ou clique (PNG, JPG até 5MB)</span>
-                            <input type="file" id="coverImage" accept="image/png, image/jpeg">
-                        </div>
-                        <img id="coverPreview" src="#" alt="Pré-visualização da capa">
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group">
-                            <label>Cor de fundo</label>
-                            <input type="color" id="coverBgColor" value="#2c3e50">
-                        </div>
-                        <div class="form-group">
-                            <label>Cor do texto</label>
-                            <input type="color" id="coverTextColor" value="#ffffff">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Fonte da capa</label>
-                        <select id="coverFont">
-                            <option value="Georgia">Georgia (serifada)</option>
-                            <option value="Helvetica" selected>Helvetica (sans)</option>
-                            <option value="Times">Times New Roman</option>
-                            <option value="Courier">Courier (monoespaçada)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- ABA LAYOUT -->
-                <div class="tab-pane" id="tab-layout">
-                    <div class="form-group">
-                        <label>Estilo das páginas</label>
-                        <div class="layout-options" id="layoutOptions">
-                            <label class="layout-option selected">
-                                <input type="radio" name="layout" value="classic" checked> Clássico
-                            </label>
-                            <label class="layout-option">
-                                <input type="radio" name="layout" value="modern"> Moderno
-                            </label>
-                            <label class="layout-option">
-                                <input type="radio" name="layout" value="elegant"> Elegante
-                            </label>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="form-group">
-                            <label>Fonte do texto</label>
-                            <select id="bodyFont">
-                                <option value="helvetica">Helvetica (sans)</option>
-                                <option value="times">Times (serif)</option>
-                                <option value="courier">Courier (mono)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Cor dos títulos</label>
-                            <input type="color" id="headingColor" value="#2563eb">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Número de páginas (80-100)</label>
-                        <input type="number" id="numPages" min="80" max="100" value="85" step="1">
-                    </div>
-                    <div class="form-group">
-                        <label>Número de capítulos (1-10) *usado apenas no modo automático</label>
-                        <input type="number" id="numChapters" min="1" max="10" value="5">
-                    </div>
-                    <div class="form-group">
-                        <label><input type="checkbox" id="showPageNumbers" checked> Mostrar numeração nas páginas</label>
-                    </div>
-                    <div class="form-group">
-                        <label><input type="checkbox" id="showFooter" checked> Mostrar rodapé com título do e-book</label>
-                    </div>
-                </div>
-
-                <!-- ABA CONTEÚDO -->
-                <div class="tab-pane" id="tab-conteudo">
-                    <div class="form-group">
-                        <label>Origem do conteúdo</label>
-                        <div class="content-option">
-                            <input type="radio" name="contentSource" id="sourceAuto" value="auto" checked>
-                            <label for="sourceAuto">Automático (Lorem Ipsum)</label>
-                        </div>
-                        <div class="content-option">
-                            <input type="radio" name="contentSource" id="sourceUpload" value="upload">
-                            <label for="sourceUpload">Upload de arquivo .txt</label>
-                        </div>
-                        <div class="content-option">
-                            <input type="radio" name="contentSource" id="sourceTextarea" value="textarea">
-                            <label for="sourceTextarea">Digitar/colar texto</label>
-                        </div>
-                    </div>
-
-                    <div id="uploadContentArea" style="display: none;" class="content-area">
-                        <div class="form-group">
-                            <label>Selecione um arquivo .txt (UTF-8)</label>
-                            <input type="file" id="txtFile" accept=".txt,text/plain">
-                        </div>
-                        <p class="upload-hint">O conteúdo do arquivo será usado no lugar do Lorem Ipsum.</p>
-                    </div>
-
-                    <div id="textareaContentArea" style="display: none;" class="content-area">
-                        <div class="form-group">
-                            <label>Digite ou cole o texto do seu livro:</label>
-                            <textarea id="customText" placeholder="Escreva aqui o conteúdo do seu e-book..."></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- BOTÕES DE AÇÃO GLOBAIS -->
-                <div class="button-group">
-                    <button class="btn btn-secondary" id="saveProjectBtn">💾 Salvar Projeto</button>
-                    <button class="btn btn-secondary" id="loadProjectBtn">📂 Carregar Projeto</button>
-                </div>
-                <button class="btn btn-primary" id="generateBtn">✨ GERAR E-BOOK ✨</button>
-                <div class="status-area" id="status">Pronto para gerar.</div>
-                <input type="file" id="loadProjectFile" accept=".ebookproj,application/json" style="display: none;">
             </div>
 
-            <!-- COLUNA DIREITA: PRÉ-VISUALIZAÇÃO DA CAPA -->
-            <div class="preview-panel">
-                <div class="preview-title">🔍 Prévia da capa</div>
-                <div class="cover-preview-box" id="coverPreviewBox">
-                    <div class="preview-title-text" id="previewTitle">Meu E-book Incrível</div>
-                    <div class="preview-subtitle" id="previewSubtitle">Edição Especial</div>
-                    <div class="preview-author" id="previewAuthor">Autor Desconhecido</div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Mensagem inicial -->
+                <div class="message bot">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <span class="label evidence">SISTEMA</span><br>
+                        Olá! Sou o <strong>EviMed</strong>, seu assistente de medicina baseada em evidências.<br><br>
+                        Posso ajudar com:<br>
+                        🔬 Tratamentos baseados em diretrizes<br>
+                        📊 Níveis de evidência científica<br>
+                        📚 Referências de fontes confiáveis<br><br>
+                        <em>Digite sua pergunta clínica ou escolha uma sugestão abaixo.</em>
+                    </div>
                 </div>
-                <div style="margin-top: auto;">
-                    <p style="color: #64748b; font-size: 0.9rem; padding: 10px;">Ajuste as opções nas abas e veja a prévia atualizada.</p>
+            </div>
+
+            <!-- Sugestões -->
+            <div class="suggestions" id="suggestions">
+                <span class="chip" onclick="askSuggestion('tratamento infarto com supra de ST')">💔 Infarto com supra</span>
+                <span class="chip" onclick="askSuggestion('triagem de sepse no pronto-socorro')">🦠 Triagem de sepse</span>
+                <span class="chip" onclick="askSuggestion('tratamento inicial hipertensão arterial')">💉 Hipertensão</span>
+                <span class="chip" onclick="askSuggestion('janela trombólise AVC isquêmico')">🧠 Trombólise AVC</span>
+                <span class="chip" onclick="askSuggestion('manejo diabetes tipo 2 primeira linha')">🩸 Diabetes tipo 2</span>
+            </div>
+
+            <!-- Input -->
+            <div class="chat-input-area">
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        class="chat-input" 
+                        id="userInput" 
+                        placeholder="Descreva sua dúvida clínica..."
+                        onkeypress="handleKeyPress(event)"
+                    >
+                    <span class="input-icon">⌨️</span>
                 </div>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                    ➤
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        (function() {
-            const { jsPDF } = window.jspdf;
+        // ============================================
+        // BASE DE CONHECIMENTO - EVIDÊNCIAS MÉDICAS
+        // ============================================
+        const EVIDENCIAS = [
+            {
+                id: 1,
+                topico: "IAM com Supradesnivelamento ST",
+                palavrasChave: ["infarto", "iam", "supradesnivelamento", "st", "elevação st", "ataque cardíaco", "infarto agudo", "miocárdio"],
+                resposta: "O tratamento inicial do IAM com supra de ST deve incluir:<br><br>" +
+                    "<strong>1. MONAB</strong> (se não houver contraindicações):<br>" +
+                    "• <strong>M</strong>orfina para analgesia<br>" +
+                    "• <strong>O</strong>xigênio se SatO₂ < 90%<br>" +
+                    "• <strong>N</strong>itrato para vasodilatação coronariana<br>" +
+                    "• <strong>A</strong>AS (Ácido Acetilsalicílico) 200-300 mg mastigável<br>" +
+                    "• <strong>B</strong>eta-bloqueador nas primeiras 24h<br><br>" +
+                    "<strong>2. Terapia de reperfusão imediata:</strong><br>" +
+                    "• Angioplastia primária (preferencial se disponível em até 120 min)<br>" +
+                    "• Fibrinólise se angioplastia não disponível no tempo hábil<br><br>" +
+                    "<strong>3. Anticoagulação:</strong> Heparina não fracionada ou enoxaparina",
+                nivelEvidencia: "1A",
+                fonte: "Diretrizes Brasileiras de IAM, SBC 2023",
+                ano: 2023
+            },
+            {
+                id: 2,
+                topico: "Triagem de Sepse",
+                palavrasChave: ["sepse", "choque séptico", "infecção generalizada", "qsofa", "lactato", "sepsis", "infecção grave"],
+                resposta: "<strong>Triagem de sepse no pronto-socorro:</strong><br><br>" +
+                    "<strong>Escore qSOFA</strong> (quick Sequential Organ Failure Assessment):<br>" +
+                    "• Frequência Respiratória ≥ 22 irpm<br>" +
+                    "• Pressão Arterial Sistólica ≤ 100 mmHg<br>" +
+                    "• Alteração aguda do nível de consciência (Glasgow < 15)<br><br>" +
+                    "<strong>Se ≥ 2 critérios positivos + suspeita de infecção:</strong><br>" +
+                    "• Acionar protocolo de sepse imediatamente<br>" +
+                    "• Coletar lactato sérico<br>" +
+                    "• Hemoculturas (2 amostras de sítios diferentes)<br>" +
+                    "• Iniciar antibiótico de amplo espectro na <strong>1ª hora</strong><br>" +
+                    "• Ressuscitação volêmica com cristaloides 30 mL/kg",
+                nivelEvidencia: "1B",
+                fonte: "Surviving Sepsis Campaign Guidelines 2021",
+                ano: 2021
+            },
+            {
+                id: 3,
+                topico: "Tratamento da Hipertensão Arterial",
+                palavrasChave: ["pressão alta", "hipertensão", "has", "anti-hipertensivo", "pa elevada", "pressão arterial"],
+                resposta: "<strong>Tratamento anti-hipertensivo inicial:</strong><br><br>" +
+                    "<strong>Primeira linha para maioria dos pacientes:</strong><br>" +
+                    "• IECA (ex: enalapril, captopril) <strong>OU</strong><br>" +
+                    "• BRA (ex: losartana, valsartana)<br><br>" +
+                    "<strong>Em pacientes negros:</strong> Considerar iniciar com<br>" +
+                    "• BCC (ex: anlodipino) <strong>OU</strong><br>" +
+                    "• Diurético tiazídico (ex: hidroclorotiazida)<br><br>" +
+                    "<strong>Metas terapêuticas:</strong><br>" +
+                    "• Geral: < 140/90 mmHg<br>" +
+                    "• Alto risco cardiovascular: < 130/80 mmHg<br>" +
+                    "• Idosos frágeis: < 150/90 mmHg (individualizar)",
+                nivelEvidencia: "1A",
+                fonte: "Diretrizes Brasileiras de HAS, SBC 2020",
+                ano: 2020
+            },
+            {
+                id: 4,
+                topico: "Trombólise no AVC Isquêmico",
+                palavrasChave: ["avc", "derrame", "isquemia cerebral", "trombólise", "alteplase", "avci", "acidente vascular"],
+                resposta: "<strong>Trombólise no AVC Isquêmico Agudo:</strong><br><br>" +
+                    "<strong>Janela terapêutica:</strong><br>" +
+                    "• Alteplase (rtPA) IV: até <strong>4,5 horas</strong> do início dos sintomas<br>" +
+                    "• Tenecteplase: evidência crescente, pode ser alternativa<br><br>" +
+                    "<strong>Critérios de inclusão essenciais:</strong><br>" +
+                    "• Diagnóstico clínico de AVC isquêmico<br>" +
+                    "• TC de crânio sem hemorragia<br>" +
+                    "• Tempo desde o início dos sintomas ≤ 4,5h<br>" +
+                    "• Idade ≥ 18 anos<br><br>" +
+                    "<strong>Trombectomia mecânica:</strong><br>" +
+                    "• Considerar em até <strong>24 horas</strong> em casos selecionados<br>" +
+                    "• Oclusão de grande vaso confirmada por angioTC",
+                nivelEvidencia: "1A",
+                fonte: "AHA/ASA Guidelines for Acute Ischemic Stroke, 2019",
+                ano: 2019
+            },
+            {
+                id: 5,
+                topico: "Diabetes Tipo 2 - Tratamento Inicial",
+                palavrasChave: ["diabetes", "dm2", "glicemia", "metformina", "antidiabético", "açúcar no sangue", "hemoglobina glicada"],
+                resposta: "<strong>Manejo inicial do Diabetes Mellitus Tipo 2:</strong><br><br>" +
+                    "<strong>Primeira linha (após MEV*):</strong><br>" +
+                    "• <strong>Metformina</strong> (se TFG > 30 mL/min)<br>" +
+                    "• Dose inicial: 500 mg/dia, titular até 2000 mg/dia<br><br>" +
+                    "<strong>Segunda linha (associar se HbA1c fora da meta):</strong><br>" +
+                    "• <strong>Com doença cardiovascular/renal:</strong> iSGLT2 ou aGLP1<br>" +
+                    "• <strong>Sem doença CV/renal:</strong> Sulfonilureia, iDPP4, etc.<br><br>" +
+                    "<strong>Metas glicêmicas:</strong><br>" +
+                    "• HbA1c < 7% (geral)<br>" +
+                    "• Glicemia jejum: 80-130 mg/dL<br>" +
+                    "• Glicemia pós-prandial < 180 mg/dL<br><br>" +
+                    "<em>*MEV = Mudança de Estilo de Vida (dieta + exercício)</em>",
+                nivelEvidencia: "1A",
+                fonte: "Diretrizes SBD 2023 / ADA Standards of Care 2024",
+                ano: 2024
+            }
+        ];
 
-            // ========== ELEMENTOS DOM ==========
-            // Abas
-            const tabButtons = document.querySelectorAll('.tab-button');
-            const tabPanes = document.querySelectorAll('.tab-pane');
+        // ============================================
+        // FUNÇÕES DE BUSCA E RESPOSTA
+        // ============================================
 
-            // Capa
-            const titleInput = document.getElementById('title');
-            const subtitleInput = document.getElementById('subtitle');
-            const authorInput = document.getElementById('author');
-            const coverBgColor = document.getElementById('coverBgColor');
-            const coverTextColor = document.getElementById('coverTextColor');
-            const coverFontSelect = document.getElementById('coverFont');
-            const coverImageInput = document.getElementById('coverImage');
-            const coverPreviewImg = document.getElementById('coverPreview');
-            const coverPreviewBox = document.getElementById('coverPreviewBox');
-            const previewTitle = document.getElementById('previewTitle');
-            const previewSubtitle = document.getElementById('previewSubtitle');
-            const previewAuthor = document.getElementById('previewAuthor');
-            const uploadArea = document.getElementById('uploadArea');
+        function buscarEvidencia(pergunta) {
+            const perguntaLower = pergunta.toLowerCase();
+            let melhorResultado = null;
+            let maiorPontuacao = 0;
 
-            // Layout
-            const layoutRadios = document.querySelectorAll('input[name="layout"]');
-            const bodyFontSelect = document.getElementById('bodyFont');
-            const headingColorInput = document.getElementById('headingColor');
-            const numPagesInput = document.getElementById('numPages');
-            const numChaptersInput = document.getElementById('numChapters');
-            const showPageNumbersCheck = document.getElementById('showPageNumbers');
-            const showFooterCheck = document.getElementById('showFooter');
+            for (const evidencia of EVIDENCIAS) {
+                let pontuacao = 0;
 
-            // Conteúdo
-            const sourceAuto = document.getElementById('sourceAuto');
-            const sourceUpload = document.getElementById('sourceUpload');
-            const sourceTextarea = document.getElementById('sourceTextarea');
-            const uploadContentArea = document.getElementById('uploadContentArea');
-            const textareaContentArea = document.getElementById('textareaContentArea');
-            const txtFileInput = document.getElementById('txtFile');
-            const customTextarea = document.getElementById('customText');
+                // Pontua por palavra-chave encontrada
+                for (const palavra of evidencia.palavrasChave) {
+                    if (perguntaLower.includes(palavra.toLowerCase())) {
+                        pontuacao += 2;
+                    }
+                }
 
-            // Botões e status
-            const generateBtn = document.getElementById('generateBtn');
-            const saveProjectBtn = document.getElementById('saveProjectBtn');
-            const loadProjectBtn = document.getElementById('loadProjectBtn');
-            const loadProjectFile = document.getElementById('loadProjectFile');
-            const statusDiv = document.getElementById('status');
+                // Bônus para palavras importantes
+                const palavrasImportantes = ["tratamento", "diagnóstico", "triagem", "manejo", 
+                                              "terapia", "janela", "trombólise", "inicial"];
+                for (const palavra of palavrasImportantes) {
+                    if (perguntaLower.includes(palavra)) {
+                        pontuacao += 1;
+                    }
+                }
 
-            // Variáveis de estado
-            let coverImageBase64 = null;
-            let uploadedTextContent = null; // Armazena o texto do arquivo .txt
-            let customTextContent = '';     // Armazena o texto da área de digitação
+                // Bônus se pergunta contém termos do tópico
+                const palavrasTopico = evidencia.topico.toLowerCase().split(' ');
+                for (const palavra of palavrasTopico) {
+                    if (palavra.length > 3 && perguntaLower.includes(palavra)) {
+                        pontuacao += 1;
+                    }
+                }
 
-            // ========== SISTEMA DE ABAS ==========
-            tabButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tab = btn.dataset.tab;
-                    tabButtons.forEach(b => b.classList.remove('active'));
-                    tabPanes.forEach(p => p.classList.remove('active'));
-                    btn.classList.add('active');
-                    document.getElementById(`tab-${tab}`).classList.add('active');
-                });
-            });
-
-            // ========== ATUALIZAÇÃO DA PRÉVIA DA CAPA ==========
-            function updateCoverPreview() {
-                previewTitle.textContent = titleInput.value || 'Título';
-                previewSubtitle.textContent = subtitleInput.value || ' ';
-                previewAuthor.textContent = authorInput.value || ' ';
-                coverPreviewBox.style.backgroundColor = coverBgColor.value;
-                coverPreviewBox.style.color = coverTextColor.value;
-                coverPreviewBox.style.fontFamily = coverFontSelect.value;
-
-                if (coverImageBase64) {
-                    coverPreviewBox.style.backgroundImage = `url('${coverImageBase64}')`;
-                    coverPreviewBox.style.backgroundSize = 'cover';
-                    coverPreviewBox.style.backgroundBlendMode = 'overlay';
-                } else {
-                    coverPreviewBox.style.backgroundImage = '';
+                if (pontuacao > maiorPontuacao) {
+                    maiorPontuacao = pontuacao;
+                    melhorResultado = evidencia;
                 }
             }
 
-            titleInput.addEventListener('input', updateCoverPreview);
-            subtitleInput.addEventListener('input', updateCoverPreview);
-            authorInput.addEventListener('input', updateCoverPreview);
-            coverBgColor.addEventListener('input', updateCoverPreview);
-            coverTextColor.addEventListener('input', updateCoverPreview);
-            coverFontSelect.addEventListener('change', updateCoverPreview);
+            return { evidencia: melhorResultado, pontuacao: maiorPontuacao };
+        }
 
-            // Upload de imagem da capa
-            uploadArea.addEventListener('click', () => coverImageInput.click());
-            coverImageInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 5 * 1024 * 1024) {
-                        alert('Arquivo muito grande. Máximo 5MB.');
-                        return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = function(ev) {
-                        coverImageBase64 = ev.target.result;
-                        coverPreviewImg.src = coverImageBase64;
-                        coverPreviewImg.style.display = 'block';
-                        updateCoverPreview();
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
+        function formatarResposta(evidencia, pontuacao) {
+            let confianca = pontuacao >= 6 ? "ALTA" : pontuacao >= 3 ? "MODERADA" : "BAIXA";
+            let confiancaCor = pontuacao >= 6 ? "#10b981" : pontuacao >= 3 ? "#f59e0b" : "#ef4444";
 
-            uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#3b82f6';
-            });
-            uploadArea.addEventListener('dragleave', () => {
-                uploadArea.style.borderColor = '#cbd5e1';
-            });
-            uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadArea.style.borderColor = '#cbd5e1';
-                const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    if (file.size > 5 * 1024 * 1024) {
-                        alert('Arquivo muito grande. Máximo 5MB.');
-                        return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = function(ev) {
-                        coverImageBase64 = ev.target.result;
-                        coverPreviewImg.src = coverImageBase64;
-                        coverPreviewImg.style.display = 'block';
-                        updateCoverPreview();
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    alert('Por favor, solte um arquivo de imagem válido.');
-                }
-            });
-
-            // ========== CONTROLE DAS OPÇÕES DE CONTEÚDO ==========
-            function updateContentAreas() {
-                uploadContentArea.style.display = sourceUpload.checked ? 'block' : 'none';
-                textareaContentArea.style.display = sourceTextarea.checked ? 'block' : 'none';
-            }
-            sourceAuto.addEventListener('change', updateContentAreas);
-            sourceUpload.addEventListener('change', updateContentAreas);
-            sourceTextarea.addEventListener('change', updateContentAreas);
-            updateContentAreas(); // inicializa
-
-            // Upload de arquivo .txt
-            txtFileInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    uploadedTextContent = ev.target.result;
-                    statusDiv.textContent = `📄 Arquivo "${file.name}" carregado (${uploadedTextContent.length} caracteres).`;
-                };
-                reader.readAsText(file, 'UTF-8');
-            });
-
-            // Área de texto personalizada
-            customTextarea.addEventListener('input', function() {
-                customTextContent = this.value;
-            });
-
-            // ========== FUNÇÕES DE GERAÇÃO DE CONTEÚDO ==========
-            // Texto base para automático (Lorem Ipsum)
-            const loremParagrafoBase = [
-                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-                "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.",
-                "Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.",
-                "Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem."
-            ];
-
-            function gerarParagrafoAuto() {
-                const numFrases = Math.floor(Math.random() * 3) + 3;
-                let paragrafo = '';
-                for (let i = 0; i < numFrases; i++) {
-                    paragrafo += loremParagrafoBase[Math.floor(Math.random() * loremParagrafoBase.length)] + ' ';
-                }
-                return paragrafo.trim();
+            if (!evidencia || pontuacao === 0) {
+                return `
+                    <span class="label warning">⚠️ EVIDÊNCIA NÃO ENCONTRADA</span><br><br>
+                    Não encontrei evidência específica para sua pergunta em minha base atual.<br><br>
+                    <strong>Sugestões:</strong><br>
+                    • Consulte diretrizes das sociedades de especialidade<br>
+                    • Verifique bases como PubMed, UpToDate ou Cochrane<br>
+                    • Use termos médicos padronizados<br>
+                    • Tente reformular sua pergunta com palavras-chave específicas
+                `;
             }
 
-            function gerarTituloCapitulo(num) {
-                const titulos = ['Introdução', 'Fundamentos', 'Desenvolvimento', 'Aprofundamento', 'Estudo de Caso', 'Análise Crítica', 'Síntese', 'Conclusão', 'Apêndice', 'Referências'];
-                return `Capítulo ${num}: ${titulos[(num-1) % titulos.length]}`;
+            return `
+                <span class="label evidence">📋 EVIDÊNCIA ENCONTRADA</span>
+                <span class="label level">Nível ${evidencia.nivelEvidencia}</span><br><br>
+                <strong style="color: #00d4ff;">${evidencia.topico}</strong><br><br>
+                ${evidencia.resposta}
+                <div class="source">
+                    📚 <strong>Fonte:</strong> ${evidencia.fonte} (${evidencia.ano})<br>
+                    🎯 <strong>Confiança da correspondência:</strong> <span style="color: ${confiancaCor};">${confianca} (${pontuacao} pts)</span>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // INTERFACE DO CHAT
+        // ============================================
+
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function scrollToBottom() {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addMessage(type, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            if (type === 'bot') {
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">${content}</div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">👤</div>
+                    <div class="message-content">${content}</div>
+                `;
             }
+            
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
 
-            // Função auxiliar para adicionar texto com quebra automática
-            function adicionarTexto(doc, texto, x, y, larguraMax, lineHeight, fontSize) {
-                doc.setFontSize(fontSize);
-                const linhas = doc.splitTextToSize(texto, larguraMax);
-                doc.text(linhas, x, y);
-                return y + (linhas.length * lineHeight);
+        function showTyping() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            scrollToBottom();
+        }
+
+        function removeTyping() {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
             }
+        }
 
-            // ========== GERAÇÃO DO PDF ==========
-            function gerarPDF() {
-                const numPages = parseInt(numPagesInput.value, 10);
-                if (numPages < 80 || numPages > 100 || isNaN(numPages)) {
-                    alert('Número de páginas deve estar entre 80 e 100.');
-                    return;
-                }
+        function sendMessage() {
+            const question = userInput.value.trim();
+            if (!question) return;
 
-                // Verificar fonte de conteúdo
-                let contentParagraphs = [];
-                if (sourceAuto.checked) {
-                    // Conteúdo automático: gerar parágrafos baseado em capítulos
-                    const numChapters = parseInt(numChaptersInput.value, 10);
-                    if (numChapters < 1 || numChapters > 10) {
-                        alert('Número de capítulos deve estar entre 1 e 10.');
-                        return;
-                    }
-                    // Gera uma lista de parágrafos (cada parágrafo é uma string)
-                    for (let cap = 1; cap <= numChapters; cap++) {
-                        // Adiciona título do capítulo
-                        contentParagraphs.push(`__CAPITULO__${gerarTituloCapitulo(cap)}`);
-                        // Cada capítulo terá de 10 a 20 parágrafos
-                        const numParagrafos = Math.floor(Math.random() * 10) + 10;
-                        for (let p = 0; p < numParagrafos; p++) {
-                            contentParagraphs.push(gerarParagrafoAuto());
-                        }
-                    }
-                } else if (sourceUpload.checked) {
-                    if (!uploadedTextContent) {
-                        alert('Faça o upload de um arquivo .txt primeiro.');
-                        return;
-                    }
-                    // Divide o texto em parágrafos (linhas em branco separam parágrafos)
-                    contentParagraphs = uploadedTextContent.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
-                } else if (sourceTextarea.checked) {
-                    if (!customTextarea.value.trim()) {
-                        alert('Digite ou cole algum texto na área de texto.');
-                        return;
-                    }
-                    contentParagraphs = customTextarea.value.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
-                }
+            // Mostrar mensagem do usuário
+            addMessage('user', question.replace(/\n/g, '<br>'));
+            userInput.value = '';
+            sendBtn.disabled = true;
+            userInput.disabled = true;
 
-                if (contentParagraphs.length === 0) {
-                    alert('Nenhum conteúdo para gerar o e-book.');
-                    return;
-                }
+            // Mostrar indicador de digitação
+            showTyping();
 
-                generateBtn.disabled = true;
-                statusDiv.textContent = '⏳ Gerando PDF, por favor aguarde...';
+            // Simular processamento (para efeito mais realista)
+            setTimeout(() => {
+                removeTyping();
+                
+                // Buscar evidência
+                const resultado = buscarEvidencia(question);
+                const respostaFormatada = formatarResposta(resultado.evidencia, resultado.pontuacao);
+                
+                // Adicionar resposta
+                addMessage('bot', respostaFormatada);
+                
+                sendBtn.disabled = false;
+                userInput.disabled = false;
+                userInput.focus();
+            }, 1500 + Math.random() * 1000);
+        }
 
-                setTimeout(() => {
-                    try {
-                        const doc = new jsPDF({
-                            orientation: 'portrait',
-                            unit: 'mm',
-                            format: 'a4'
-                        });
+        function askSuggestion(texto) {
+            userInput.value = texto;
+            sendMessage();
+        }
 
-                        // Configurações globais
-                        const pageWidth = doc.internal.pageSize.getWidth();
-                        const pageHeight = doc.internal.pageSize.getHeight();
-                        const margemEsquerda = 20;
-                        const margemDireita = 20;
-                        const larguraUtil = pageWidth - margemEsquerda - margemDireita;
-                        const lineHeightBody = 7;
-                        const fontSizeBody = 12;
-                        const fontSizeTitle = 16;
-                        const margemSuperior = 30;
-
-                        let selectedLayout = 'classic';
-                        layoutRadios.forEach(r => { if (r.checked) selectedLayout = r.value; });
-
-                        const headingColor = headingColorInput.value;
-                        const bodyFont = bodyFontSelect.value;
-
-                        // ========== PÁGINA DE CAPA ==========
-                        if (coverImageBase64) {
-                            doc.addImage(coverImageBase64, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
-                        } else {
-                            doc.setFillColor(coverBgColor.value);
-                            doc.rect(0, 0, pageWidth, pageHeight, 'F');
-                        }
-
-                        doc.setTextColor(coverTextColor.value);
-                        doc.setFont(coverFontSelect.value.toLowerCase(), 'bold');
-                        doc.setFontSize(32);
-                        const titleLines = doc.splitTextToSize(titleInput.value, pageWidth - 40);
-                        let yPos = pageHeight / 2 - 20;
-                        doc.text(titleLines, pageWidth/2, yPos, { align: 'center' });
-
-                        if (subtitleInput.value.trim() !== '') {
-                            doc.setFontSize(18);
-                            doc.setFont(coverFontSelect.value.toLowerCase(), 'normal');
-                            yPos += 15 + (titleLines.length * 10);
-                            doc.text(subtitleInput.value, pageWidth/2, yPos, { align: 'center' });
-                        }
-
-                        if (authorInput.value.trim() !== '') {
-                            doc.setFontSize(14);
-                            doc.setFont(coverFontSelect.value.toLowerCase(), 'italic');
-                            yPos += 20;
-                            doc.text(`por ${authorInput.value}`, pageWidth/2, yPos, { align: 'center' });
-                        }
-
-                        // ========== PÁGINAS INTERNAS ==========
-                        let pageCounter = 1;
-                        let paraIndex = 0;
-
-                        while (pageCounter <= numPages && paraIndex < contentParagraphs.length) {
-                            if (pageCounter > 1) doc.addPage();
-
-                            // Aplicar estilo de layout
-                            if (selectedLayout === 'elegant') {
-                                doc.setDrawColor('#c084fc');
-                                doc.setLineWidth(0.5);
-                                doc.rect(5, 5, pageWidth-10, pageHeight-10, 'S');
-                            } else if (selectedLayout === 'modern') {
-                                doc.setFillColor(headingColor);
-                                doc.rect(0, 0, pageWidth, 8, 'F');
-                            }
-
-                            let y = margemSuperior;
-
-                            // Preencher a página com parágrafos até não caber mais
-                            while (paraIndex < contentParagraphs.length) {
-                                let paragrafo = contentParagraphs[paraIndex];
-
-                                // Verificar se é um título de capítulo (marcador especial)
-                                if (paragrafo.startsWith('__CAPITULO__')) {
-                                    const titulo = paragrafo.replace('__CAPITULO__', '');
-                                    doc.setFont(bodyFont, 'bold');
-                                    doc.setFontSize(fontSizeTitle);
-                                    doc.setTextColor(headingColor);
-                                    // Verifica se cabe na página atual
-                                    const alturaTitulo = 10; // aproximado
-                                    if (y + alturaTitulo > pageHeight - 30) {
-                                        // Não cabe, vai para próxima página
-                                        break;
-                                    }
-                                    doc.text(titulo, margemEsquerda, y);
-                                    y += alturaTitulo + 5;
-                                    doc.setFont(bodyFont, 'normal');
-                                    doc.setFontSize(fontSizeBody);
-                                    doc.setTextColor('#000000');
-                                    paraIndex++;
-                                    continue;
-                                }
-
-                                // Parágrafo normal
-                                doc.setFont(bodyFont, 'normal');
-                                doc.setFontSize(fontSizeBody);
-                                doc.setTextColor('#000000');
-
-                                // Quebrar o parágrafo em linhas para medir altura
-                                const linhas = doc.splitTextToSize(paragrafo, larguraUtil);
-                                const alturaParagrafo = linhas.length * lineHeightBody + 5; // +espaço extra
-
-                                if (y + alturaParagrafo > pageHeight - 25) {
-                                    // Não cabe mais nesta página
-                                    break;
-                                }
-
-                                // Adiciona o parágrafo
-                                doc.text(linhas, margemEsquerda, y);
-                                y += alturaParagrafo;
-                                paraIndex++;
-                            }
-
-                            // Numeração de páginas
-                            if (showPageNumbersCheck.checked) {
-                                doc.setFontSize(10);
-                                doc.setTextColor('#aaa');
-                                doc.text(`Página ${pageCounter}`, pageWidth/2, pageHeight - 15, { align: 'center' });
-                            }
-
-                            // Rodapé
-                            if (showFooterCheck.checked) {
-                                doc.setFontSize(9);
-                                doc.setTextColor('#888');
-                                doc.setFont(bodyFont, 'italic');
-                                doc.text(titleInput.value, margemEsquerda, pageHeight - 15);
-                            }
-
-                            pageCounter++;
-                        }
-
-                        // Se ainda há conteúdo não colocado, mas já atingiu o máximo de páginas, ignoramos (truncamos)
-                        if (paraIndex < contentParagraphs.length) {
-                            console.warn(`Conteúdo excede o número de páginas (${numPages}). Páginas restantes: ${contentParagraphs.length - paraIndex} parágrafos não foram incluídos.`);
-                        }
-
-                        doc.save(`ebook_${numPages}_paginas.pdf`);
-                        statusDiv.textContent = `✅ E-book gerado com sucesso (${numPages} páginas)!`;
-                    } catch (error) {
-                        console.error(error);
-                        statusDiv.textContent = '❌ Erro ao gerar PDF. Tente novamente.';
-                    } finally {
-                        generateBtn.disabled = false;
-                    }
-                }, 200);
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
             }
+        }
 
-            generateBtn.addEventListener('click', gerarPDF);
+        // Foco inicial no input
+        userInput.focus();
 
-            // ========== SALVAR PROJETO ==========
-            saveProjectBtn.addEventListener('click', function() {
-                // Coletar todas as configurações, incluindo conteúdo
-                const project = {
-                    title: titleInput.value,
-                    subtitle: subtitleInput.value,
-                    author: authorInput.value,
-                    coverBgColor: coverBgColor.value,
-                    coverTextColor: coverTextColor.value,
-                    coverFont: coverFontSelect.value,
-                    coverImageBase64: coverImageBase64,
-                    layout: Array.from(layoutRadios).find(r => r.checked)?.value || 'classic',
-                    bodyFont: bodyFontSelect.value,
-                    headingColor: headingColorInput.value,
-                    numPages: numPagesInput.value,
-                    numChapters: numChaptersInput.value,
-                    showPageNumbers: showPageNumbersCheck.checked,
-                    showFooter: showFooterCheck.checked,
-                    contentSource: sourceAuto.checked ? 'auto' : (sourceUpload.checked ? 'upload' : 'textarea'),
-                    uploadedTextContent: uploadedTextContent,
-                    customTextContent: customTextarea.value
-                };
-
-                const jsonStr = JSON.stringify(project, null, 2);
-                const blob = new Blob([jsonStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'meu_ebook.ebookproj';
-                a.click();
-                URL.revokeObjectURL(url);
-                statusDiv.textContent = '💾 Projeto salvo com sucesso!';
-            });
-
-            // ========== CARREGAR PROJETO ==========
-            loadProjectBtn.addEventListener('click', function() {
-                loadProjectFile.click();
-            });
-
-            loadProjectFile.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    try {
-                        const project = JSON.parse(ev.target.result);
-
-                        // Aplicar configurações da capa
-                        titleInput.value = project.title || '';
-                        subtitleInput.value = project.subtitle || '';
-                        authorInput.value = project.author || '';
-                        coverBgColor.value = project.coverBgColor || '#2c3e50';
-                        coverTextColor.value = project.coverTextColor || '#ffffff';
-                        coverFontSelect.value = project.coverFont || 'Helvetica';
-
-                        // Imagem da capa
-                        if (project.coverImageBase64) {
-                            coverImageBase64 = project.coverImageBase64;
-                            coverPreviewImg.src = coverImageBase64;
-                            coverPreviewImg.style.display = 'block';
-                        } else {
-                            coverImageBase64 = null;
-                            coverPreviewImg.style.display = 'none';
-                            coverPreviewImg.src = '#';
-                        }
-
-                        // Layout
-                        bodyFontSelect.value = project.bodyFont || 'helvetica';
-                        headingColorInput.value = project.headingColor || '#2563eb';
-                        numPagesInput.value = project.numPages || 85;
-                        numChaptersInput.value = project.numChapters || 5;
-                        showPageNumbersCheck.checked = project.showPageNumbers !== undefined ? project.showPageNumbers : true;
-                        showFooterCheck.checked = project.showFooter !== undefined ? project.showFooter : true;
-
-                        if (project.layout) {
-                            layoutRadios.forEach(r => {
-                                if (r.value === project.layout) {
-                                    r.checked = true;
-                                    r.closest('.layout-option').classList.add('selected');
-                                } else {
-                                    r.closest('.layout-option').classList.remove('selected');
-                                }
-                            });
-                        }
-
-                        // Conteúdo
-                        if (project.contentSource === 'auto') {
-                            sourceAuto.checked = true;
-                        } else if (project.contentSource === 'upload') {
-                            sourceUpload.checked = true;
-                            uploadedTextContent = project.uploadedTextContent || null;
-                        } else if (project.contentSource === 'textarea') {
-                            sourceTextarea.checked = true;
-                            customTextarea.value = project.customTextContent || '';
-                            customTextContent = project.customTextContent || '';
-                        }
-                        updateContentAreas();
-
-                        updateCoverPreview();
-                        statusDiv.textContent = '📂 Projeto carregado com sucesso!';
-                    } catch (error) {
-                        console.error(error);
-                        alert('Erro ao carregar arquivo. Formato inválido.');
-                    } finally {
-                        loadProjectFile.value = '';
-                    }
-                };
-                reader.readAsText(file);
-            });
-
-            // ========== VALIDAÇÕES ==========
-            numPagesInput.addEventListener('change', function() {
-                let val = parseInt(this.value, 10);
-                if (val < 80) this.value = 80;
-                if (val > 100) this.value = 100;
-            });
-
-            numChaptersInput.addEventListener('change', function() {
-                let val = parseInt(this.value, 10);
-                if (val < 1) this.value = 1;
-                if (val > 10) this.value = 10;
-            });
-
-            // Inicializar prévia
-            updateCoverPreview();
-        })();
+        // Scroll inicial
+        scrollToBottom();
     </script>
 </body>
 </html>
